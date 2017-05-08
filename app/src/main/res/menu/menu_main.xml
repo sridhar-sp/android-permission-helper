@@ -3,8 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     tools:context="half_blood_prince.permissionhelper.MainActivity">
     <item
-        android:id="@+id/action_settings"
-        android:orderInCategory="100"
-        android:title="@string/action_settings"
-        app:showAsAction="never" />
+        android:id="@+id/item_code_menu_main_ac"
+        android:title="@string/code"
+        android:icon="@drawable/ic_github_logo"
+        app:showAsAction="always" />
 </menu>
