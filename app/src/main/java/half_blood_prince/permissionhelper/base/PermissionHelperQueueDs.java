@@ -9,9 +9,7 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -20,7 +18,7 @@ import java.util.Map;
  *
  * @author Sridhar
  */
-public abstract class PermissionHelper {
+public abstract class PermissionHelperQueueDs {
 
     /**
      * Model class used to keep the required attributes about the permission
@@ -96,9 +94,9 @@ public abstract class PermissionHelper {
     private LinkedHashMap<Integer, PermissionModel> permissionMap;
 
     /**
-     * Queue to process the pending permission
+     * ArrayList acts as a queue to process the pending permission
      */
-    private Deque<Integer> queue = new ArrayDeque<>();
+    private ArrayList<Integer> queue = new ArrayList<>();
 
     private ArrayList<Integer> grantedPermission = new ArrayList<>();
 
@@ -106,16 +104,13 @@ public abstract class PermissionHelper {
 
     private ArrayList<Integer> completelyDeniedPermission = new ArrayList<>();
 
-    private boolean isGroupOfPermissionRequested;
-
     /**
      * Constructor used to initialize this class object
      *
      * @param activity      activity reference
      * @param permissionMap map contains permission to check and request with their corresponding id
      */
-    protected PermissionHelper(@NonNull Activity activity,
-                               @NonNull Map<Integer, PermissionModel> permissionMap) {
+    protected PermissionHelperQueueDs(Activity activity, Map<Integer, PermissionModel> permissionMap) {
         this.activity = activity;
         this.permissionMap = (LinkedHashMap<Integer, PermissionModel>) permissionMap;
 
@@ -125,10 +120,9 @@ public abstract class PermissionHelper {
      * This method initialize the queue and start the checking process
      */
     public final void startCheckingPermission() {
-        isGroupOfPermissionRequested = permissionMap.keySet().size() > 1;
         queue.addAll(permissionMap.keySet());
         if (!queue.isEmpty())
-            checkPermission(queue.peek());
+            checkPermission(queue.get(0));
     }
 
     /**
@@ -141,14 +135,14 @@ public abstract class PermissionHelper {
     private void checkPermission(final int permissionID) {
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            dispatchGrantedPermission(permissionID);
+            permissionGranted(permissionID);
             return;
         }
 
         String permission = permissionMap.get(permissionID).permission;
 
         if (isPermitted(permission)) {
-            dispatchGrantedPermission(permissionID);
+            permissionGranted(permissionID);
             return;
         }
 
@@ -160,7 +154,7 @@ public abstract class PermissionHelper {
                     if (which == AlertDialog.BUTTON_POSITIVE)
                         requestPermission(permissionID);
                     else
-                        dispatchDeniedPermission(permissionID);
+                        permissionDenied(permissionID);
 
                     dialog.dismiss();
                 }
@@ -216,7 +210,7 @@ public abstract class PermissionHelper {
         if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED
                 && (permissions.length > 0 && permission.equals(permissions[0]))
                 ) {
-            dispatchGrantedPermission(requestCode);
+            permissionGranted(requestCode);
         } else handleDeny(requestCode);
 
     }
@@ -224,17 +218,14 @@ public abstract class PermissionHelper {
     /**
      * Removes the previous permission ID from the queue and look for the next element to begin the
      * checking/requesting process
+     *
+     * @param permissionID previous permission that is checked and finished the process
      */
-    private void checkNextPermission() {
+    private void checkNextPermission(int permissionID) {
 
-        queue.poll();
-
+        queue.remove(Integer.valueOf(permissionID));
         if (!queue.isEmpty()) {
-            checkPermission(queue.peek());
-        } else {
-            if (isGroupOfPermissionRequested) {
-                dispatchGroupResult();
-            }
+            checkPermission(queue.get(0));
         }
     }
 
@@ -246,9 +237,9 @@ public abstract class PermissionHelper {
      */
     private void handleDeny(int permissionID) {
         if (doIHaveToExplain(permissionMap.get(permissionID).permission)) {
-            dispatchDeniedPermission(permissionID);
+            permissionDenied(permissionID);
         } else {
-            dispatchCompletelyDeniedPermission(permissionID);
+            permissionDeniedCompletely(permissionID);
         }
     }
 
@@ -286,53 +277,6 @@ public abstract class PermissionHelper {
         dialog.show();
     }
 
-    private void dispatchGroupResult() {
-        int size = grantedPermission.size() +
-                deniedPermission.size() + completelyDeniedPermission.size();
-        int[] requestedIds = new int[size];
-        int[] results = new int[size];
-
-        size = grantedPermission.size();
-        for (int i = 0; i < size; i++) {
-            requestedIds[i] = grantedPermission.get(i);
-            results[i] = PackageManager.PERMISSION_GRANTED;
-        }
-        size = deniedPermission.size();
-        for (int i = 0; i < size; i++) {
-            requestedIds[i] = deniedPermission.get(i);
-            results[i] = PackageManager.PERMISSION_DENIED;
-        }
-        size = completelyDeniedPermission.size();
-        for (int i = 0; i < size; i++) {
-            requestedIds[i] = completelyDeniedPermission.get(i);
-            results[i] = PackageManager.PERMISSION_DENIED;
-        }
-
-        onGroupOfPermissionRequestResult(requestedIds, results);
-    }
-
-    private void dispatchGrantedPermission(int permissionId) {
-        if (isGroupOfPermissionRequested) {
-            grantedPermission.add(permissionId);
-            checkNextPermission();
-        } else
-            permissionGranted(permissionId);
-    }
-
-    private void dispatchDeniedPermission(int permissionId) {
-        if (isGroupOfPermissionRequested) {
-            deniedPermission.add(permissionId);
-            checkNextPermission();
-        } else permissionDenied(permissionId);
-    }
-
-    private void dispatchCompletelyDeniedPermission(int permissionId) {
-        if (isGroupOfPermissionRequested) {
-            completelyDeniedPermission.add(permissionId);
-            checkNextPermission();
-        } else permissionDeniedCompletely(permissionId);
-    }
-
     /**
      * Callback method to inform about the permission has been granted
      *
@@ -340,7 +284,8 @@ public abstract class PermissionHelper {
      * @see PermissionModel
      */
     protected void permissionGranted(int permissionID) {
-
+        grantedPermission.add(permissionID);
+        checkNextPermission(permissionID);
     }
 
     /**
@@ -350,6 +295,17 @@ public abstract class PermissionHelper {
      * @see PermissionModel
      */
     protected void permissionDenied(int permissionID) {
+        deniedPermission.add(permissionID);
+        checkNextPermission(permissionID);
+    }
+
+    /**
+     * Callback method to inform about the permission has been requested
+     *
+     * @param permissionID id mapped to PermissionModel
+     * @see PermissionModel
+     */
+    protected void permissionRequested(int permissionID) {
 
     }
 
@@ -361,24 +317,7 @@ public abstract class PermissionHelper {
      * @see PermissionModel
      */
     protected void permissionDeniedCompletely(int permissionID) {
-
+        completelyDeniedPermission.add(permissionID);
+        checkNextPermission(permissionID);
     }
-
-    /**
-     * todo Remove this method
-     * <p>
-     * Callback method to inform about the permission has been requested
-     *
-     * @param permissionID id mapped to PermissionModel
-     * @see PermissionModel
-     */
-    protected void permissionRequested(int permissionID) {
-
-    }
-
-    protected void onGroupOfPermissionRequestResult(int[] requestedIds, int[] grantResults) {
-
-    }
-
-
 }

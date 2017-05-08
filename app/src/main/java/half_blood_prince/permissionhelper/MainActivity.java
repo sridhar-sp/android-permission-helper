@@ -1,19 +1,20 @@
 package half_blood_prince.permissionhelper;
 
-import android.Manifest;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
-import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 
+import half_blood_prince.permissionhelper.Utility.Logger;
 import half_blood_prince.permissionhelper.Utility.Utils;
+import half_blood_prince.permissionhelper.base.Permission;
 import half_blood_prince.permissionhelper.base.PermissionHelper;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
@@ -77,11 +78,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
      * Method called when the click happens in {@link #btnSinglePermission}
      */
     private void askSinglePermission() {
-        mPermissionHelper = new PermissionHelper(this, Utils.getSignlePermission()) {
+        mPermissionHelper = new PermissionHelper(this, Permission.getSignlePermission()) {
             @Override
             protected void permissionGranted(int permissionID) {
                 super.permissionGranted(permissionID);
-                Utils.showBriefToast("Permission grandted "+permissionID);
+                Utils.showBriefToast("askSinglePermission Permission granted " + permissionID);
+                Logger.debug("askSinglePermission Permission granted " + permissionID);
+            }
+
+            @Override
+            protected void onGroupOfPermissionRequestResult(int[] requestedIds, int[] grantResults) {
+                super.onGroupOfPermissionRequestResult(requestedIds, grantResults);
+                Utils.showBriefToast("onGroupOfPermissionRequestResult in askSinglePermission");
+                Logger.debug("onGroupOfPermissionRequestResult in askSinglePermission");
+                for (int i = 0; i < requestedIds.length; i++) {
+                    Logger.debug("id "+requestedIds[i]+" result "+Utils.getPermissionResultAsString(grantResults[i]));
+                }
             }
         };
         mPermissionHelper.startCheckingPermission();
@@ -91,11 +103,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
      * Method called when the click happens in {@link #btnGroupPermission}
      */
     private void askGroupPermission() {
-        mPermissionHelper = new PermissionHelper(this, Utils.getGroupPermission()) {
+        mPermissionHelper = new PermissionHelper(this, Permission.getGroupPermission()) {
             @Override
             protected void permissionGranted(int permissionID) {
                 super.permissionGranted(permissionID);
-                Utils.showBriefToast("Permission grandted "+permissionID);
+                Utils.showBriefToast("askGroupPermission Permission granted " + permissionID);
+                Logger.debug("askGroupPermission Permission granted " + permissionID);
+            }
+
+            @Override
+            protected void onGroupOfPermissionRequestResult(int[] requestedIds, int[] grantResults) {
+                super.onGroupOfPermissionRequestResult(requestedIds, grantResults);
+                Utils.showBriefToast("onGroupOfPermissionRequestResult in askGroupPermission");
+                Logger.debug("onGroupOfPermissionRequestResult in askGroupPermission");
+                for (int i = 0; i < requestedIds.length; i++) {
+                    Logger.debug("id "+requestedIds[i]+" result "+Utils.getPermissionResultAsString(grantResults[i]));
+                }
             }
         };
         mPermissionHelper.startCheckingPermission();
